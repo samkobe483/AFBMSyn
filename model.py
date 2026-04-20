@@ -1,32 +1,9 @@
 import os
 import numpy as np
-import pandas as pd
-from sklearn.metrics import mean_squared_error
-from lifelines.utils import concordance_index
-from scipy.stats import pearsonr, spearmanr
-import copy
 import torch
-import pickle
-import time
 import math
-from torch.utils import data
 import torch.nn.functional as F
-from torch.autograd import Variable
 from torch import nn
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import SequentialSampler
-from torch_geometric.nn import global_max_pool as gmp, global_mean_pool
-from prettytable import PrettyTable
-from subword_nmt.apply_bpe import BPE
-from dataset import GetData
-from torch_geometric.data import InMemoryDataset, Batch
-from torch_geometric import data as DATA
-from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score, precision_score, cohen_kappa_score, \
-    auc
-from sklearn.metrics import precision_recall_curve
-from sklearn.model_selection import train_test_split
-import sys
 from torch_geometric.loader import DataLoader as GeometricDataLoader
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -437,111 +414,7 @@ class DrugEncoder(nn.Module):
         return output
 
 
-# ============================================================================
-# Cross-Attention 层
-# ============================================================================
-class CrossAttentionLayer(nn.Module):
-    """交叉注意力层：让药物特征和细胞特征相互关注"""
 
-    def __init__(self, dim, num_heads=8, dropout=0.1):
-        super(CrossAttentionLayer, self).__init__()
-        self.dim = dim
-        self.num_heads = num_heads
-        self.head_dim = dim // num_heads
-
-        assert dim % num_heads == 0, "dim must be divisible by num_heads"
-
-        self.q_proj = nn.Linear(dim, dim)
-        self.k_proj = nn.Linear(dim, dim)
-        self.v_proj = nn.Linear(dim, dim)
-        self.out_proj = nn.Linear(dim, dim)
-
-        self.dropout = nn.Dropout(dropout)
-        self.layer_norm = nn.LayerNorm(dim)
-
-        self.scale = math.sqrt(self.head_dim)
-
-    def forward(self, query, key_value):
-        """
-        query: [B, dim] 查询特征
-        key_value: [B, dim] 键值特征
-        return: [B, dim] 注意力加权后的特征
-        """
-        B = query.size(0)
-
-        # 投影
-        Q = self.q_proj(query).view(B, self.num_heads, self.head_dim)  # [B, H, D]
-        K = self.k_proj(key_value).view(B, self.num_heads, self.head_dim)  # [B, H, D]
-        V = self.v_proj(key_value).view(B, self.num_heads, self.head_dim)  # [B, H, D]
-
-        # 注意力分数
-        attn_scores = torch.einsum('bhd,bhd->bh', Q, K) / self.scale  # [B, H]
-        attn_weights = F.softmax(attn_scores, dim=-1)  # [B, H]
-        attn_weights = self.dropout(attn_weights)
-
-        # 加权求和
-        attn_output = attn_weights.unsqueeze(-1) * V  # [B, H, D]
-        attn_output = attn_output.view(B, self.dim)  # [B, dim]
-
-        # 输出投影 + 残差连接
-        output = self.out_proj(attn_output)
-        output = self.dropout(output)
-        output = self.layer_norm(query + output)
-
-        return output
-
-
-class StackedCrossAttention(nn.Module):
-    def __init__(self, dim, num_heads=8, num_layers=2, dropout=0.1):
-        super(StackedCrossAttention, self).__init__()
-
-        self.drug_to_cell_layers = nn.ModuleList([
-            CrossAttentionLayer(dim, num_heads, dropout) for _ in range(num_layers)
-        ])
-
-        self.cell_to_drug_layers = nn.ModuleList([
-            CrossAttentionLayer(dim, num_heads, dropout) for _ in range(num_layers)
-        ])
-
-        # 药物 FFN
-        self.drug_ffn = nn.Sequential(
-            nn.Linear(dim * 2, dim * 4),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(dim * 4, dim),
-            nn.Dropout(dropout)
-        )
-        self.drug_layer_norm = nn.LayerNorm(dim)
-
-        # 细胞 FFN（新增）
-        self.cell_ffn = nn.Sequential(
-            nn.Linear(dim * 2, dim * 4),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(dim * 4, dim),
-            nn.Dropout(dropout)
-        )
-        self.cell_layer_norm = nn.LayerNorm(dim)
-
-    def forward(self, drug_feat, cell_feat):
-        drug_attended = drug_feat
-        cell_attended = cell_feat
-
-        for d2c, c2d in zip(self.drug_to_cell_layers, self.cell_to_drug_layers):
-            drug_attended = d2c(drug_attended, cell_attended)
-            cell_attended = c2d(cell_attended, drug_attended)
-
-        # 拼接用于 FFN
-        concat = torch.cat([drug_attended, cell_attended], dim=1)
-
-        # 对称地更新两者
-        drug_ffn_out = self.drug_ffn(concat)
-        drug_attended = self.drug_layer_norm(drug_attended + drug_ffn_out)
-
-        cell_ffn_out = self.cell_ffn(concat)
-        cell_attended = self.cell_layer_norm(cell_attended + cell_ffn_out)
-
-        return drug_attended, cell_attended
 
 
 
@@ -775,21 +648,6 @@ class SupervisedContrastiveLoss(nn.Module):
         loss = -mean_log_prob_pos.mean()
 
         return loss
-
-
-class AutomaticWeightedLoss(nn.Module):
-    """自动加权多任务损失"""
-
-    def __init__(self, num_tasks=3):
-        super(AutomaticWeightedLoss, self).__init__()
-        params = torch.ones(num_tasks, requires_grad=True)
-        self.params = nn.Parameter(params)
-
-    def forward(self, *losses):
-        total_loss = 0
-        for i, loss in enumerate(losses):
-            total_loss += 0.5 / (self.params[i] ** 2) * loss + torch.log(1 + self.params[i] ** 2)
-        return total_loss
 
 
 # ============================================================================
