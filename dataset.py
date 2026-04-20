@@ -1,16 +1,13 @@
 import os
-import sys
 import csv
 import torch
 import numpy as np
 import pandas as pd
 import pickle
-from datetime import datetime
 from itertools import islice
 from torch_geometric import data as DATA
 from torch_geometric.data import InMemoryDataset
 from rdkit import Chem
-from rdkit.Chem import AllChem
 from sklearn.decomposition import PCA
 from pathlib import Path
 
@@ -28,8 +25,8 @@ CELL_DIR = os.path.join(BASE_PATH, 'cell_features.csv')
 # ============================================================
 # 【重要】处理后的数据保存路径 - 使用有足够空间的分区
 # ============================================================
-_8T_PROCESSED_DIR = '/.....'
-if os.path.exists('/....'):
+_8T_PROCESSED_DIR = '/8t/wyt/data/processed'
+if os.path.exists('/8t'):
     DATAS_DIR = _8T_PROCESSED_DIR
     os.makedirs(DATAS_DIR, exist_ok=True)
     print(f"Using /8t partition for processed data: {DATAS_DIR}")
@@ -239,27 +236,6 @@ def load_cell_data(cellfile1, cellfile2):
 # ------------------------------------------------------------
 # 工具函数
 # ------------------------------------------------------------
-
-def CalculateGraphFeat(feat_mat, adj_list):
-    assert feat_mat.shape[0] == len(adj_list)
-    adj_mat = np.zeros((len(adj_list), len(adj_list)), dtype='float32')
-    for i in range(len(adj_list)):
-        nodes = adj_list[i]
-        for each in nodes:
-            adj_mat[i, int(each)] = 1
-    assert np.allclose(adj_mat, adj_mat.T)
-    x, y = np.where(adj_mat == 1)
-    adj_index = np.array(np.vstack((x, y)))
-    return [feat_mat, adj_index]
-
-
-def FeatureExtract(drug_feature):
-    drug_data = [[] for _ in range(len(drug_feature))]
-    for i in range(len(drug_feature)):
-        feat_mat, adj_list, _ = drug_feature.iloc[i]
-        drug_data[i] = CalculateGraphFeat(feat_mat, adj_list)
-    return drug_data
-
 
 # ------------------------------------------------------------
 # 主类：完整药物 pipeline
