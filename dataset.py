@@ -27,10 +27,9 @@ CELL_DIR = os.path.join(BASE_PATH, 'cell_features.csv')
 
 # ============================================================
 # 【重要】处理后的数据保存路径 - 使用有足够空间的分区
-# 如果 /8t 分区可用，使用它；否则使用默认路径
 # ============================================================
-_8T_PROCESSED_DIR = '/8t/wyt/data/processed'
-if os.path.exists('/8t'):
+_8T_PROCESSED_DIR = '/.....'
+if os.path.exists('/....'):
     DATAS_DIR = _8T_PROCESSED_DIR
     os.makedirs(DATAS_DIR, exist_ok=True)
     print(f"Using /8t partition for processed data: {DATAS_DIR}")
