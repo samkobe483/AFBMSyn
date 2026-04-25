@@ -443,10 +443,10 @@ class ProjectionHead(nn.Module):
 
 
 # ============================================================================
-# 主模型：MFASyn (Multi-Feature Attention Synergy)
+# 主模型：AFBMSyn 
 # ============================================================================
 class Model(nn.Module):
-    """MFASyn 主模型 (优化版)
+    """AFBMSyn 主模型 (优化版)
 
     优化点：
     1. 三线性药物交互：引入差值和乘积项，增强协同效应捕获。
@@ -651,10 +651,10 @@ class SupervisedContrastiveLoss(nn.Module):
 
 
 # ============================================================================
-# 训练类：mfa
+# 训练类：AFBM
 # ============================================================================
-class mfa:
-    """Multi-Feature Attention Synergy Model (优化版)"""
+class AFBM:
+    """AFBMSyn: Adaptive Feature and Bilinear Modeling Synergy"""
 
     def __init__(self, modeldir='Modelscl', foldnum=0, hiddim=8192, mmse=1000, task='classification', global_mean=0.0, global_std=1.0):
         self.modeldir = modeldir
