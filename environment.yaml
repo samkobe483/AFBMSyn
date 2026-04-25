@@ -1,4 +1,4 @@
-name: DSPSCL
+name: AFBMSyn
 channels:
   - pytorch
   - rdkit
