@@ -1,138 +1,70 @@
-以下是根据 Cell Line Embedding README 的格式重写后的 **完整 AFBMSyn README**，你可以直接一键复制并粘贴到 GitHub 的 `README.md` 文件中。
+# Cell Line Embedding with PPI Network
 
-```markdown
-# AFBMSyn: Multimodal Drug Synergy Prediction based on Adaptive Feature Learning and Bilinear Interaction Modeling
-
-A deep learning framework for anti-cancer drug combination synergy prediction using adaptive feature selection, dual-pathway cell encoding, and second-order interaction modeling.
+This sub-project generates cell line embeddings using protein-protein interaction (PPI) networks and omics data (gene expression and mutation). Used for drug synergy prediction.
 
 ---
 
-## 📌 Overview
-
-AFBMSyn (Adaptive Feature and Bilinear Modeling Synergy) integrates:
-
-| Component | Description |
-|-----------|-------------|
-| **Adaptive Drug Features** | SE‑Blocks (Squeeze‑and‑Excitation) to filter Morgan fingerprints + Transformer encoders for drug‑target/pathway interactions |
-| **Dual‑Pathway Cell Line Encoder** | *Feature branch*: gene expression data; *Structure branch*: GIN (Graph Isomorphism Network) on PPI networks |
-| **Bilinear Interaction Pooling** | Models second‑order multiplicative interactions between drugs and cell lines |
-| **Regression Analysis** | Optimized for continuous synergy scores (Loewe, Bliss, etc.) |
-
----
-
-## 🛠️ Installation
-
-### 1️⃣ Clone the repository
-
-```bash
-git clone https://github.com/yourusername/AFBMSyn.git
-cd AFBMSyn
-```
-
-### 2️⃣ Create conda environment
-
-```bash
-conda env create -f environment.yaml
-```
-
-### 3️⃣ Activate environment
-
-```bash
-conda activate AFBMSyn
-```
-
-> **Alternative (pip)**  
-> ```bash
-> pip install torch torch-geometric rdkit lifelines
-> ```
-
----
-
-## 📊 Dataset
-
-The project uses drug synergy data from:
-
-| Dataset | Source |
-|---------|--------|
-| **Oneil** | O’Neil *et al.* drug combinations |
-| **ALMANAC** | NCI‑ALMANAC drug synergy data |
-
-Place your data files in the `data/` directory:
+## File Description
 
 | File | Description |
 |------|-------------|
-| `smiles.csv` | Drug SMILES structures |
-| `drug_protein_feature.pkl` | Drug‑target protein features |
-| `drug_pathway_feature.pkl` | Drug‑pathway features |
-| `cell_features.csv` | Cell line gene expression data |
-| `cell_feat.npy` | Cell line feature matrix |
-| `oneil_synergyloewe.txt` | Synergy scores (O’Neil dataset) |
-| `almanac_synergyloewe.txt` | Synergy scores (ALMANAC dataset) |
+| `const.py` | Data path configuration |
+| `dataset.py` | Dataset classes (C2VDataset, C2VSymDataset) |
+| `model.py` | Model architecture (GINEncoder, Cell2Vec, RandomW) |
+| `train.py` | Training script for cell embeddings |
+| `gen_feat.py` | Generate normalized cell features from embeddings |
+| `utils.py` | Utility functions (model saving, loss visualization) |
+| `train_gin_example.py` | Example showing GIN encoder usage |
 
 ---
 
-## 🚀 Usage
+## Data Files (in `data/Cell/data/data/`)
 
-### Training
+| File | Description |
+|------|-------------|
+| `ppi.coo.npy` | PPI network edges (COO format) |
+| `node_features.npy` | Node features for PPI graph |
+| `target_ge.npy` | Gene expression targets |
+| `nodes_ge.npy` | Valid gene nodes for GE |
+| `target_mut.npy` | Mutation targets |
+| `nodes_mut.npy` | Valid gene nodes for MUT |
+| `cell_feat.npy` | Output: normalized cell features |
 
+---
+
+## Run Instructions
+
+### Step 1: Prepare data
+Ensure the following files exist in `data/Cell/data/data/`:
+- `ppi.coo.npy` - PPI network edges
+- `node_features.npy` - Node features
+- `target_ge.npy`, `nodes_ge.npy` - Gene expression data
+- `target_mut.npy`, `nodes_mut.npy` - Mutation data
+
+### Step 2: Train cell embeddings
 ```bash
-python main.py
+python train.py
 ```
+Trains GE and MUT embeddings (default: 128 hidden dim, 384 embedding dim)
 
-Trains the model and evaluates regression performance.
-
-### Evaluation
-
+### Step 3: Generate cell features
 ```bash
-# Generates regression scatter plots and metrics (MSE, PCC, SCC, CI)
-# Output saved in results/figures/
+python gen_feat.py mdl_ge_128x384_sample mdl_mut_128x384_sample
 ```
+Generates normalized cell features from saved embeddings
 
-### Configuration
-
-Switch datasets by editing `get_dataset.py`:
-
-```python
-SYNERGY_FILENAME = 'oneil_synergyloewe.txt'   # or 'almanac_synergyloewe.txt'
-```
+### Output
+`data/Cell/data/data/cell_feat.npy` - Cell line feature matrix
 
 ---
 
-## 📁 Project Structure
+## Model Architecture
 
-```
-AFBMSyn/
-├── data/                    # Data files
-├── results/                 # Training results (figures, metrics)
-├── main.py                  # Main training script
-├── model.py                 # AFBMSyn model definition
-├── get_dataset.py           # Data loading and preprocessing
-└── environment.yaml         # Conda environment
-```
+- **GINEncoder**: Graph Isomorphism Network for PPI graph encoding
+- **Cell2Vec**: Cell line embedding model combining PPI features with learnable cell embeddings
+- Supports both regression and classification tasks
 
 ---
 
-## 📦 Requirements
-
-- Python 3.8+
-- PyTorch 1.10+
-- RDKit
-- PyTorch Geometric
-- lifelines
-- numpy, pandas, scikit-learn
-
-See `environment.yaml` for full details.
-
----
-
-## 📖 Citation
-
-If you use this code, please cite our work:
-
-> *AFBMSyn: Multimodal Drug Synergy Prediction based on Adaptive Feature Learning and Bilinear Interaction Modeling* (manuscript in preparation)
-
-For the cell line embedding component, also cite:
-
-> Xiaowen Wang, et al. *PRODeepSyn: predicting anticancer synergistic drug combinations by embedding cell lines with protein–protein interaction network.* Briefings in Bioinformatics, 2022.
-
-
+## Citation
+Xiaowen Wang, et al. "PRODeepSyn: predicting anticancer synergistic drug combinations by embedding cell lines with protein–protein interaction network." Briefings in Bioinformatics, 2022.
