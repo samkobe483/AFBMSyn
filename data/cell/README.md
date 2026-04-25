@@ -1,12 +1,42 @@
-AFBMSyn: Cell Line Embedding via PPI NetworkThis sub-module provides the Structure Branch for AFBMSyn, generating cell line embeddings by integrating Protein-Protein Interaction (PPI) networks with multi-omics data (Gene Expression and Mutation).OverviewThe cell line encoding process in AFBMSyn follows the PRODeepSyn methodology:Graph Encoding: Uses a Graph Isomorphism Network (GIN) to capture the topological importance of genes within the PPI network.Multi-Omics Integration: Combines gene expression (GE) and mutation (MUT) profiles to create a holistic representation of cellular states.Pre-training: Embeddings are trained to reconstruct omics profiles before being used as fixed features in the drug synergy prediction task.Project StructureCell_Embedding/
-├── data/                    # PPI and Omics data files
-├── const.py                 # Path and hyperparameter configurations
-├── dataset.py               # Dataset classes (C2VDataset)
-├── model.py                 # Architecture (GINEncoder, Cell2Vec)
-├── train.py                 # Training script for embeddings
-├── gen_feat.py              # Feature generation and normalization
-└── utils.py                 # Utility functions and visualization
-Data RequirementsPlace the following files in data/Cell/data/data/:FileDescriptionppi.coo.npyPPI network edge index (COO format)node_features.npyInitial node features for the PPI graphtarget_ge.npyGene expression target values for cell linesnodes_ge.npyMap of valid gene nodes for GE branchtarget_mut.npyMutation target values for cell linesnodes_mut.npyMap of valid gene nodes for MUT branchUsage1. Training Cell EmbeddingsTrain the model to learn cell line representations based on GE and MUT tasks:Bashpython train.py
-Default configuration: 128 hidden units, 384 embedding dimensions.2. Generating Normalized FeaturesAfter training, extract and normalize the embeddings to generate the final feature matrix used by AFBMSyn:Bash# Replace 'mdl_ge_...' with your actual saved model names
-python gen_feat.py mdl_ge_128x384_sample mdl_mut_128x384_sample
-3. OutputThe final feature matrix will be saved to:data/Cell/data/data/cell_feat.npyNote: Ensure this file is moved or linked to the main AFBMSyn/data/ directory for synergy prediction.Architecture DetailsGINEncoder: A 5-layer Graph Isomorphism Network that aggregates neighborhood information in the PPI network.Cell2Vec: A fusion module that computes the interaction between learnable cell-specific embeddings and gene-specific graph features.CitationIf you use this embedding module in your research, please cite:Xiaowen Wang, et al. "PRODeepSyn: predicting anticancer synergistic drug combinations by embedding cell lines with protein–protein interaction network." Briefings in Bioinformatics, 2022.
+# Cell Line Embedding with PPI Network
+
+A specialized module for generating cell line embeddings by integrating Protein-Protein Interaction (PPI) networks with multi-omics data (gene expression and mutation) to support drug synergy prediction.
+
+## Overview
+
+This sub-project implements the embedding logic based on the PRODeepSyn framework:
+- **GINEncoder**: Utilizes Graph Isomorphism Networks to capture the topological structure of PPI graphs.
+- **Cell2Vec**: A hybrid model that merges PPI network features with learnable cell line embeddings.
+- **Multi-Omics Integration**: Supports both Gene Expression (GE) and Mutation (MUT) data pathways.
+
+## File Description
+
+| File | Description |
+| :--- | :--- |
+| `const.py` | Configuration for data paths and constants. |
+| `dataset.py` | Dataset classes including `C2VDataset` and `C2VSymDataset`. |
+| `model.py` | Core architectures: `GINEncoder`, `Cell2Vec`, and `RandomW`. |
+| `train.py` | Main training script for generating cell embeddings. |
+| `gen_feat.py` | Script to generate and normalize cell features from trained models. |
+| `utils.py` | Utility functions for model persistence and loss visualization. |
+| `train_gin_example.py` | Example script demonstrating GIN encoder implementation. |
+
+## Installation & Data Preparation
+
+### 1. Requirements
+Ensure your environment includes `torch` and `torch_geometric` (refer to the main `environment.yaml`).
+
+### 2. Data Setup
+Place the following files in `data/Cell/data/data/`:
+- `ppi.coo.npy`: PPI network edges in COO format.
+- `node_features.npy`: Initial node features for the PPI graph.
+- `target_ge.npy` / `nodes_ge.npy`: Gene expression targets and corresponding nodes.
+- `target_mut.npy` / `nodes_mut.npy`: Mutation targets and corresponding nodes.
+
+## Usage
+
+### Step 1: Train Cell Embeddings
+Train the models for both Gene Expression (GE) and Mutation (MUT) pathways.
+```bash
+# Default config: 128 hidden dim, 384 embedding dim
+python train.py
